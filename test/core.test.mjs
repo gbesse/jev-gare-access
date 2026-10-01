@@ -31,3 +31,41 @@ test("classe un dossier sourcé", async () => { const provider = createFakeProvi
     "origine": "donnée synthétique"
   }
 }, provider); assert.equal(result.decision, "assistance_required"); assert.equal(result.review, false); });
+
+const dossierÀRevoir = {
+  "id": "revue-1",
+  "text": "Un ascenseur est déclaré disponible, mais son état à l’heure de la correspondance et le cheminement de secours sont inconnus.",
+  "source": {
+    "url": "https://example.test/dossier-ambigu",
+    "date": "2026-09-20"
+  },
+  "details": {
+    "origine": "donnée synthétique",
+    "signal": "informations incomplètes"
+  }
+};
+
+test("marque une décision incertaine pour revue humaine", async () => {
+  const provider = createFakeProvider(() => ({
+    model: "jev-1.13.0",
+    answers: {
+      decision: {
+        type: "choice",
+        choice: "uncertain",
+        probabilities: {
+          accessible: 0.15,
+          assistance_required: 0.15,
+          uncertain: 0.55,
+          impossible: 0.15,
+        },
+        confidence: 0.62,
+      },
+    },
+    usage: { input_tokens: 10, output_tokens: 0 },
+  }));
+  const résultat = await assessStationAccess(dossierÀRevoir, provider);
+  assert.equal(résultat.decision, "uncertain");
+  assert.equal(résultat.review, true);
+  assert.equal(résultat.confidence, 0.62);
+  assert.equal(provider.calls, 1);
+});
